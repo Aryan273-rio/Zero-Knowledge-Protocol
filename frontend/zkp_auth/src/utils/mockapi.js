@@ -1,84 +1,78 @@
 /**
- * Mock API — simulates backend endpoints for ZKP auth.
- *
- * In production these would be real HTTP calls. Here we store state
- * in a module-level Map to simulate a server database across calls.
+ * Real API — Connects to the FastAPI Backend
  */
 
-import { verify, generateChallenge } from "./schnorr.js";
-
-// In-memory "database": username → { y: BigInt }
-const userStore = new Map();
-
-// Pending login sessions: username → { r: BigInt, e: BigInt, y: BigInt }
-const sessionStore = new Map();
-
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+// Your FastAPI server address
+const BASE_URL = "http://localhost:8000";
 
 /**
  * POST /api/register
- * Stores the user's public key y.
- * In production, y would be stored in a database; the secret x NEVER leaves the client.
+ * Sends the user's public key (y) to the backend database.
  */
 export async function apiRegister(username, y) {
-  await delay(600); // Simulate network latency
+  const response = await fetch(`${BASE_URL}/api/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // Convert BigInt to string before sending because JSON doesn't support BigInt
+    body: JSON.stringify({ username, y: y.toString() }) 
+  });
 
-  if (userStore.has(username)) {
-    throw new Error(`Username "${username}" is already taken.`);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Registration failed");
   }
 
-  userStore.set(username, { y });
-  return { success: true, message: "Public key registered." };
+  return await response.json();
 }
 
 /**
  * POST /api/login/commit
- * Receives the prover's commitment r = g^k mod p.
- * Returns a random challenge e from the server.
- * Stores r and e in a short-lived session.
+ * Sends the commitment (r) to the server.
+ * Returns a random challenge (e) from the server.
  */
 export async function apiLoginCommit(username, r) {
-  await delay(500);
+  const response = await fetch(`${BASE_URL}/api/login/commit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, r: r.toString() })
+  });
 
-  const user = userStore.get(username);
-  if (!user) {
-    throw new Error(`User "${username}" not found. Please register first.`);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "User not found. Please register first.");
   }
 
-  // Server generates the challenge — must be unpredictable
-  const e = generateChallenge();
-  sessionStore.set(username, { r, e, y: user.y });
-
-  return { e }; // Send challenge back to prover
+  const data = await response.json();
+  
+  // The server sends 'e' as a string. We must convert it back to a BigInt 
+  // so your frontend schnorr.js math continues to work correctly.
+  return { e: BigInt(data.e) }; 
 }
 
 /**
  * POST /api/login/verify
- * Receives the prover's response s = (k + e·x) mod q.
- * Runs g^s ≡ r · y^e (mod p) and grants/denies access.
- * Session is always cleared regardless of outcome (prevents replay).
+ * Sends the response (s) to the server for mathematical verification.
  */
 export async function apiLoginVerify(username, s) {
-  await delay(700);
+  const response = await fetch(`${BASE_URL}/api/login/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, s: s.toString() })
+  });
 
-  const session = sessionStore.get(username);
-  sessionStore.delete(username); // One-time session — always wipe
-
-  if (!session) {
-    throw new Error("No active login session. Please start over.");
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Verification failed. Proof is invalid.");
   }
 
-  const { r, e, y } = session;
-  const valid = verify(y, r, e, s);
-
-  if (!valid) {
-    throw new Error("Verification failed. Proof is invalid.");
-  }
-
-  return { success: true, message: "Authentication successful!" };
+  return await response.json();
 }
 
-/** Check if a user exists in the mock store (for UI hints only) */
+/** * Removed userStore checks: 
+ * We no longer check if a user exists locally because the real backend handles it.
+ * We can leave this as a stub that always returns false if your UI components 
+ * still call it, or you can delete it if you aren't using it for UI hints.
+ */
 export function userExists(username) {
-  return userStore.has(username);
+  return false; 
 }
