@@ -8,28 +8,32 @@ function ProofStep({ step, label, formula, value, status = "idle" }) {
     idle: "text-zinc-500",
     active: "text-amber-400",
     done: "text-emerald-400",
-    error: "text-red-400",
+    error: "text-rose-400",
   }[status];
 
   const dotColor = {
     idle: "bg-zinc-700",
-    active: "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]",
-    done: "bg-emerald-500",
-    error: "bg-red-500",
+    active: "bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.8)] animate-pulse",
+    done: "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]",
+    error: "bg-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.4)]",
   }[status];
 
   return (
-    <div className="flex gap-3 items-start py-3 border-b border-zinc-800/60 last:border-0">
-      <div className="flex flex-col items-center gap-1 mt-1">
-        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor} transition-all duration-300`} />
-        <span className="text-zinc-600 text-[10px] font-mono">{step}</span>
+    <div className="flex gap-4 items-start py-4 border-b border-zinc-800/60 last:border-0 group transition-all duration-300 hover:bg-zinc-800/20 px-2 rounded-lg -mx-2">
+      <div className="flex flex-col items-center gap-1.5 mt-1.5">
+        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor} transition-all duration-500`} />
+        <span className="text-zinc-600 text-[10px] font-mono font-bold">{step}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-zinc-500 mb-0.5 uppercase tracking-wider">{label}</p>
-        <p className="font-mono text-sm text-zinc-300">{formula}</p>
+        <p className="text-[11px] text-zinc-400 mb-1 uppercase tracking-widest font-semibold">{label}</p>
+        {/* Added break-all here to fix the text overflow */}
+        <p className="font-mono text-sm text-zinc-200 break-all leading-relaxed bg-zinc-950/50 p-2 rounded-md border border-zinc-800/50 shadow-inner">
+          {formula}
+        </p>
         {value !== undefined && (
-          <p className={`font-mono text-xs mt-1 ${statusColor} transition-colors duration-300`}>
-            = <span className="text-base font-semibold">{value?.toString() ?? "…"}</span>
+          <p className={`font-mono text-xs mt-2 ${statusColor} transition-colors duration-300 break-all`}>
+            <span className="opacity-50 mr-2">↳</span> 
+            <span className="text-sm font-semibold">{value?.toString() ?? "…"}</span>
           </p>
         )}
       </div>
@@ -43,7 +47,7 @@ export function MathPanel({ phase, values = {} }) {
   const steps = [
     {
       step: "P",
-      label: "Parameters",
+      label: "System Parameters",
       formula: `p=${p}, q=${q}, g=${g}`,
       value: null,
       status: "done",
@@ -67,65 +71,48 @@ export function MathPanel({ phase, values = {} }) {
       label: "Commitment (login step 1)",
       formula: "k ← random,  r = g^k mod p",
       value: r !== undefined ? `k=${k}, r=${r}` : undefined,
-      status:
-        r !== undefined ? "done" : phase === "committing" ? "active" : "idle",
+      status: r !== undefined ? "done" : phase === "committing" ? "active" : "idle",
     },
     {
       step: "4",
       label: "Challenge (from server)",
       formula: "e ← random ∈ [1, q−1]",
       value: e,
-      status:
-        e !== undefined ? "done" : phase === "challenging" ? "active" : "idle",
+      status: e !== undefined ? "done" : phase === "challenging" ? "active" : "idle",
     },
     {
       step: "5",
       label: "Response (login step 2)",
       formula: "s = (k + e·x) mod q",
       value: s,
-      status:
-        s !== undefined ? "done" : phase === "responding" ? "active" : "idle",
+      status: s !== undefined ? "done" : phase === "responding" ? "active" : "idle",
     },
     {
       step: "✓",
       label: "Server verification",
       formula: "g^s ≡ r · y^e  (mod p)?",
-      value:
-        phase === "verified"
-          ? "✓ True — Access granted"
-          : phase === "failed"
-          ? "✗ False — Rejected"
-          : undefined,
-      status:
-        phase === "verified"
-          ? "done"
-          : phase === "failed"
-          ? "error"
-          : phase === "verifying"
-          ? "active"
-          : "idle",
+      value: phase === "verified" ? "✓ True — Access granted" : phase === "failed" ? "✗ False — Rejected" : undefined,
+      status: phase === "verified" ? "done" : phase === "failed" ? "error" : phase === "verifying" ? "active" : "idle",
     },
   ];
 
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 h-full">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-1 h-4 bg-rose-800 rounded-full" />
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-          Proof Trace
+    // Added backdrop blur and better gradient borders for a premium feel
+    <div className="bg-zinc-900/40 backdrop-blur-md border border-zinc-700/50 rounded-2xl p-6 h-full shadow-2xl">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-1.5 h-5 bg-rose-700 rounded-full shadow-[0_0_8px_rgba(190,18,60,0.6)]" />
+        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-300">
+          Proof Trace Monitor
         </h3>
       </div>
-      <div>
+      <div className="space-y-1">
         {steps.map((s, i) => (
           <ProofStep key={i} {...s} />
         ))}
       </div>
-      <div className="mt-4 pt-3 border-t border-zinc-800/60">
-        <p className="text-[10px] text-zinc-600 leading-relaxed">
-          Zero-Knowledge: the verifier learns nothing about{" "}
-          <span className="text-zinc-500 font-mono">x</span> — only that the
-          prover knows it. Security relies on the hardness of the discrete
-          logarithm problem.
+      <div className="mt-6 pt-4 border-t border-zinc-800/60">
+        <p className="text-[11px] text-zinc-500 leading-relaxed font-medium">
+          Zero-Knowledge: the verifier learns nothing about <span className="text-rose-400/80 font-mono bg-rose-950/30 px-1 py-0.5 rounded">x</span> — only that the prover knows it. Security relies on the hardness of the discrete logarithm problem.
         </p>
       </div>
     </div>

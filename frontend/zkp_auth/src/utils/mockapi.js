@@ -1,84 +1,67 @@
 /**
- * Mock API — simulates backend endpoints for ZKP auth.
- *
- * In production these would be real HTTP calls. Here we store state
- * in a module-level Map to simulate a server database across calls.
+ * Real API client — talks to the FastAPI backend at localhost:8000
  */
 
-import { verify, generateChallenge } from "./schnorr.js";
+const BASE = "http://127.0.0.1:8000/api";
 
-// In-memory "database": username → { y: BigInt }
-const userStore = new Map();
+async function post(path, body) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
-// Pending login sessions: username → { r: BigInt, e: BigInt, y: BigInt }
-const sessionStore = new Map();
+  const data = await res.json();
 
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+  if (!res.ok) {
+    // FastAPI can return detail as a string or an array of validation objects
+    const detail = data.detail;
+    if (typeof detail === "string") {
+      throw new Error(detail);
+    } else if (Array.isArray(detail)) {
+      throw new Error(detail.map((e) => e.msg).join(", "));
+    } else {
+      throw new Error("Request failed");
+    }
+  }
+
+  return data;
+}
 
 /**
  * POST /api/register
- * Stores the user's public key y.
- * In production, y would be stored in a database; the secret x NEVER leaves the client.
+ * Sends only the public key y — secret x never leaves the browser.
  */
 export async function apiRegister(username, y) {
-  await delay(600); // Simulate network latency
-
-  if (userStore.has(username)) {
-    throw new Error(`Username "${username}" is already taken.`);
-  }
-
-  userStore.set(username, { y });
-  return { success: true, message: "Public key registered." };
+  return await post("/register", {
+    username,
+    public_key_y: Number(y),  // BigInt → Number for JSON serialisation
+  });
 }
 
 /**
- * POST /api/login/commit
- * Receives the prover's commitment r = g^k mod p.
- * Returns a random challenge e from the server.
- * Stores r and e in a short-lived session.
+ * POST /api/auth/commit
+ * Sends commitment r, receives { session_id, challenge_e }.
  */
 export async function apiLoginCommit(username, r) {
-  await delay(500);
+  const data = await post("/auth/commit", {
+    username,
+    commitment_r: Number(r),
+  });
 
-  const user = userStore.get(username);
-  if (!user) {
-    throw new Error(`User "${username}" not found. Please register first.`);
-  }
-
-  // Server generates the challenge — must be unpredictable
-  const e = generateChallenge();
-  sessionStore.set(username, { r, e, y: user.y });
-
-  return { e }; // Send challenge back to prover
+  return {
+    e: BigInt(data.challenge_e),  // Convert back to BigInt for math
+    sessionId: data.session_id,
+  };
 }
 
 /**
- * POST /api/login/verify
- * Receives the prover's response s = (k + e·x) mod q.
- * Runs g^s ≡ r · y^e (mod p) and grants/denies access.
- * Session is always cleared regardless of outcome (prevents replay).
+ * POST /api/auth/verify
+ * Sends session_id + response s, receives { authenticated, token }.
  */
-export async function apiLoginVerify(username, s) {
-  await delay(700);
-
-  const session = sessionStore.get(username);
-  sessionStore.delete(username); // One-time session — always wipe
-
-  if (!session) {
-    throw new Error("No active login session. Please start over.");
-  }
-
-  const { r, e, y } = session;
-  const valid = verify(y, r, e, s);
-
-  if (!valid) {
-    throw new Error("Verification failed. Proof is invalid.");
-  }
-
-  return { success: true, message: "Authentication successful!" };
-}
-
-/** Check if a user exists in the mock store (for UI hints only) */
-export function userExists(username) {
-  return userStore.has(username);
+export async function apiLoginVerify(username, s, sessionId) {
+  return await post("/auth/verify", {
+    session_id: sessionId,
+    response_s: Number(s),
+  });
 }

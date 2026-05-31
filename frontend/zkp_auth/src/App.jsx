@@ -14,7 +14,6 @@ function LockIcon({ className }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("register");
-  // Pass keypair from registration to login for convenience
   const [registered, setRegistered] = useState(null);
 
   function handleRegistered(username, x, y) {
@@ -48,7 +47,7 @@ export default function App() {
             Schnorr Identification Protocol — prove knowledge of a secret without
             revealing it.{" "}
             <span className="text-zinc-600">
-              p={23}, q={11}, g={2}
+              512-bit safe prime · g=2
             </span>
           </p>
         </div>
@@ -85,8 +84,8 @@ export default function App() {
           {activeTab === "register" && registered && (
             <div className="mb-6 flex items-center justify-between gap-3 bg-emerald-950/30 border border-emerald-900/30 rounded-lg px-4 py-2.5">
               <p className="text-xs text-emerald-500">
-                ✓ <strong>{registered.username}</strong> registered. Secret key{" "}
-                <span className="font-mono">{registered.x.toString()}</span> auto-filled in Login.
+                ✓ <strong>{registered.username}</strong> registered. Secret key
+                auto-filled in Login.
               </p>
               <button
                 onClick={() => setActiveTab("login")}
@@ -114,7 +113,7 @@ export default function App() {
             external libraries.
           </p>
           <p className="text-xs text-zinc-700">
-            Parameters are toy-sized (p=23). Production requires 2048-bit primes.
+            512-bit safe prime. Secret key never leaves the browser.
           </p>
         </div>
       </div>
