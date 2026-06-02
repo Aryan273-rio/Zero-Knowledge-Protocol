@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { generateCommitment, computeResponse } from "../utils/schnorr.js";
+// FIX: Add modPow, p, and g to this import statement
+import { generateCommitment, computeResponse, modPow, p, g } from "../utils/schnorr.js";
 import {
   apiLoginCommit,
   apiLoginVerify,
@@ -27,10 +28,10 @@ export function Login({ prefillUsername, prefillX }) {
   const [mathValues, setMathValues] = useState({});
 
   // Ephemeral state — wiped on failure
-  const [ephemeral, setEphemeral] = useState(null); // { k, r, e, x }
+  const [ephemeral, setEphemeral] = useState(null);
 
   function reset(msg = "", isError = false) {
-    setEphemeral(null); // Always wipe k on any terminal state
+    setEphemeral(null);
     setPhase(isError ? PHASES.FAILED : PHASES.IDLE);
     setMessage(msg);
   }
@@ -50,15 +51,15 @@ export function Login({ prefillUsername, prefillX }) {
       reset("Invalid secret key. Enter a positive integer.", true);
       return;
     }
-
-    setMathValues({ x });
+    const y = modPow(g, x, p); 
+    setMathValues({ x, y });
     setMessage("");
 
     // ── Step 1: Commitment ─────────────────────────────────
     setPhase(PHASES.COMMITTING);
     setMessage("Generating commitment r = g^k mod p…");
 
-    const { k, r, rHex } = generateCommitment();
+    const { k, r } = generateCommitment();
     setMathValues((v) => ({ ...v, k, r }));
 
     let challengeResult;
@@ -72,12 +73,13 @@ export function Login({ prefillUsername, prefillX }) {
     }
 
     const e = challengeResult.e;
+    const sessionId = challengeResult.sessionId; // ← session_id from real backend
     setMathValues((v) => ({ ...v, e }));
     setPhase(PHASES.CHALLENGING);
     setMessage(`Challenge received: e = ${e}`);
 
     // ── Step 2: Response ───────────────────────────────────
-    await new Promise((res) => setTimeout(res, 400)); // Small UX pause
+    await new Promise((res) => setTimeout(res, 400));
 
     setPhase(PHASES.RESPONDING);
     setMessage("Computing response s = (k + e·x) mod q…");
@@ -85,7 +87,6 @@ export function Login({ prefillUsername, prefillX }) {
     const { s } = computeResponse(k, e, x);
     setMathValues((v) => ({ ...v, s }));
 
-    // Store ephemeral for display (but already computed s, k no longer needed)
     setEphemeral({ k, r, e, x });
 
     // ── Final Verification ─────────────────────────────────
@@ -93,13 +94,11 @@ export function Login({ prefillUsername, prefillX }) {
     setMessage("Sending response to server for verification…");
 
     try {
-      const result = await apiLoginVerify(user, s);
-      // Success — wipe k (good hygiene even on success)
+      await apiLoginVerify(user, s, sessionId); // ← pass sessionId to backend
       setEphemeral((prev) => ({ ...prev, k: null }));
       setPhase(PHASES.VERIFIED);
-      setMessage(result.message);
+      setMessage("Authentication successful! Zero-knowledge proof accepted.");
     } catch (err) {
-      // Failure — immediately wipe k and ephemeral state
       setEphemeral(null);
       setPhase(PHASES.FAILED);
       setMessage(err.message);
@@ -114,26 +113,10 @@ export function Login({ prefillUsername, prefillX }) {
   ].includes(phase);
 
   const stepLabels = [
-    {
-      id: PHASES.COMMITTING,
-      label: "Generate commitment",
-      sub: "r = g^k mod p",
-    },
-    {
-      id: PHASES.CHALLENGING,
-      label: "Receive challenge",
-      sub: "e ← server random",
-    },
-    {
-      id: PHASES.RESPONDING,
-      label: "Compute response",
-      sub: "s = (k + e·x) mod q",
-    },
-    {
-      id: PHASES.VERIFYING,
-      label: "Server verifies",
-      sub: "g^s ≡ r · y^e mod p",
-    },
+    { id: PHASES.COMMITTING, label: "Generate commitment", sub: "r = g^k mod p" },
+    { id: PHASES.CHALLENGING, label: "Receive challenge", sub: "e ← server random" },
+    { id: PHASES.RESPONDING, label: "Compute response", sub: "s = (k + e·x) mod q" },
+    { id: PHASES.VERIFYING, label: "Server verifies", sub: "g^s ≡ r · y^e mod p" },
   ];
 
   const phaseOrder = Object.values(PHASES);
@@ -180,7 +163,11 @@ export function Login({ prefillUsername, prefillX }) {
         </div>
 
         <button
-          onClick={phase === PHASES.VERIFIED || phase === PHASES.FAILED ? () => { setPhase(PHASES.IDLE); setMessage(""); setMathValues({}); } : handleLogin}
+          onClick={
+            phase === PHASES.VERIFIED || phase === PHASES.FAILED
+              ? () => { setPhase(PHASES.IDLE); setMessage(""); setMathValues({}); }
+              : handleLogin
+          }
           disabled={isRunning}
           className={`w-full font-medium py-3 px-6 rounded-lg transition-all duration-200 text-sm tracking-wide flex items-center justify-center gap-2 group ${
             phase === PHASES.VERIFIED
@@ -223,8 +210,7 @@ export function Login({ prefillUsername, prefillX }) {
               const stepIdx = phaseOrder.indexOf(id);
 
               const isDone =
-                phase === PHASES.VERIFIED ||
-                phase === PHASES.FAILED
+                phase === PHASES.VERIFIED || phase === PHASES.FAILED
                   ? true
                   : currentIdx > stepIdx;
 
