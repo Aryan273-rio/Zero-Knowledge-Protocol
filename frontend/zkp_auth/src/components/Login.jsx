@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { generateCommitment, computeResponse } from "../utils/schnorr.js";
+// FIX: Add modPow, p, and g to this import statement
+import { generateCommitment, computeResponse, modPow, p, g } from "../utils/schnorr.js";
 import {
   apiLoginCommit,
   apiLoginVerify,
@@ -50,8 +51,8 @@ export function Login({ prefillUsername, prefillX }) {
       reset("Invalid secret key. Enter a positive integer.", true);
       return;
     }
-
-    setMathValues({ x });
+    const y = modPow(g, x, p); 
+    setMathValues({ x, y });
     setMessage("");
 
     // ── Step 1: Commitment ─────────────────────────────────

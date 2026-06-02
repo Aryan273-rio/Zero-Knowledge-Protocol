@@ -1,7 +1,3 @@
-/**
- * Real API client — talks to the FastAPI backend at localhost:8000
- */
-
 const BASE = "http://127.0.0.1:8000/api";
 
 async function post(path, body) {
@@ -14,7 +10,6 @@ async function post(path, body) {
   const data = await res.json();
 
   if (!res.ok) {
-    // FastAPI can return detail as a string or an array of validation objects
     const detail = data.detail;
     if (typeof detail === "string") {
       throw new Error(detail);
@@ -28,40 +23,28 @@ async function post(path, body) {
   return data;
 }
 
-/**
- * POST /api/register
- * Sends only the public key y — secret x never leaves the browser.
- */
 export async function apiRegister(username, y) {
   return await post("/register", {
     username,
-    public_key_y: Number(y),  // BigInt → Number for JSON serialisation
+    public_key_y: y.toString(), 
   });
 }
 
-/**
- * POST /api/auth/commit
- * Sends commitment r, receives { session_id, challenge_e }.
- */
 export async function apiLoginCommit(username, r) {
   const data = await post("/auth/commit", {
     username,
-    commitment_r: Number(r),
+    commitment_r: r.toString(), 
   });
 
   return {
-    e: BigInt(data.challenge_e),  // Convert back to BigInt for math
+    e: BigInt(data.challenge_e), 
     sessionId: data.session_id,
   };
 }
 
-/**
- * POST /api/auth/verify
- * Sends session_id + response s, receives { authenticated, token }.
- */
 export async function apiLoginVerify(username, s, sessionId) {
   return await post("/auth/verify", {
     session_id: sessionId,
-    response_s: Number(s),
+    response_s: s.toString(), 
   });
 }

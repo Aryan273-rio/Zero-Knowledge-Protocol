@@ -49,11 +49,12 @@ async def register(payload: RegisterRequest) -> RegisterResponse:
     validate_public_key(payload.public_key_y)
 
     # Step 3 & 4 — Insert into MongoDB; unique index enforces no duplicates
+    # Step 3 & 4 — Insert into MongoDB; unique index enforces no duplicates
     db = get_db()
     try:
         await db["users"].insert_one({
             "username": username,
-            "public_key_y": payload.public_key_y,
+            "public_key_y": str(payload.public_key_y),  # FIX: Store as string to bypass MongoDB 8-byte limit
         })
         logger.info("Registration successful for username='%s'", username)
     except DuplicateKeyError:

@@ -72,7 +72,7 @@ async def commit(payload: CommitRequest) -> CommitResponse:
         session_id,
     )
 
-    return CommitResponse(session_id=session_id, challenge_e=challenge_e)
+    return CommitResponse(session_id=session_id, challenge_e=str(challenge_e))
 
 
 @router.post(
@@ -120,7 +120,7 @@ async def verify(payload: VerifyRequest) -> VerifyResponse:
         )
         raise HTTPException(status_code=404, detail="User not found.")
 
-    public_key_y = user["public_key_y"]
+    public_key_y = int(user["public_key_y"]) # FIX: Cast the string back to an integer for math!
 
     # Run the Schnorr verification: G^s == r · y^e (mod P)
     valid = verify_proof(
@@ -131,16 +131,13 @@ async def verify(payload: VerifyRequest) -> VerifyResponse:
     )
 
     if valid:
-        # Issue a mock development token
-        # In production: replace with a signed JWT
         mock_token = f"dev_token_{secrets.token_hex(16)}"
         logger.info("Verification successful for username='%s'", session.username)
         return VerifyResponse(authenticated=True, token=mock_token)
     else:
         logger.warning("Verification failed for username='%s'", session.username)
-        # Return 401 with authenticated=False (session already deleted above)
-        from fastapi.responses import JSONResponse
-        return JSONResponse(
+        # FIX: Raise an HTTPException so CORS middleware executes normally
+        raise HTTPException(
             status_code=401,
-            content={"authenticated": False, "message": "Zero-knowledge proof failed."},
+            detail="Zero-knowledge proof failed."
         )
