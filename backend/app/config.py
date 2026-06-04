@@ -17,7 +17,7 @@ G = 2             # Generator of the subgroup of order Q
 SESSION_TTL_SECONDS = 60
 
 # ── MongoDB Config ───────────────────────────────────────────
-MONGO_URI = "mongodb://localhost:27017"
+MONGO_URI = "mongodb+srv://ankithzkp9888:ankith9888@cluster0.wtucidj.mongodb.net/zkp_clean_db?retryWrites=true&w=majority&appName=Cluster0"
 MONGO_DB_NAME = "zkp_clean_db"
 
 # ── App Config ───────────────────────────────────────────────

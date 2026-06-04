@@ -147,4 +147,4 @@ export function Register({ onRegistered }) {
       <MathPanel phase={status === "success" ? "registered" : "idle"} values={mathValues} />
     </div>
   );
-}
+} 
