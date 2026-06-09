@@ -22,8 +22,8 @@ G = 2             # Generator: G^Q ≡ 1 (mod P)
 SESSION_TTL_SECONDS = 60
 
 # ── MongoDB Config ───────────────────────────────────────────
-MONGO_URI = "mongodb://localhost:27017"
-MONGO_DB  = "zkp_auth"
+MONGO_URI = "mongodb+srv://ankithzkp9888:ankith9888@cluster0.wtucidj.mongodb.net/"
+MONGO_DB  = "zkp_clean_db"
 
 # ── App Config ───────────────────────────────────────────────
 APP_HOST = "127.0.0.1"
