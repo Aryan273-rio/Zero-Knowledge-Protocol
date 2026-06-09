@@ -1,51 +1,46 @@
 """
-database.py — MongoDB connection via Motor (async driver).
-
-Motor wraps PyMongo for use with asyncio/FastAPI.
-The client is created once at startup and reused across requests.
+database.py — MongoDB connection using Motor (async driver).
 """
 
 import logging
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from app.config import MONGO_URI, MONGO_DB_NAME
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import IndexModel, ASCENDING
+from app.config import MONGO_URI, MONGO_DB
 
 logger = logging.getLogger(__name__)
 
-# Module-level client — initialized at startup, closed at shutdown
-_client: AsyncIOMotorClient | None = None
-_db: AsyncIOMotorDatabase | None = None
+client: AsyncIOMotorClient | None = None
 
 
-async def connect_db() -> None:
-    """
-    Open the MongoDB connection and ensure required indexes exist.
-    Called once during FastAPI startup.
-    """
-    global _client, _db
-
-    logger.info("Connecting to MongoDB at %s", MONGO_URI)
-    _client = AsyncIOMotorClient(MONGO_URI)
-    _db = _client[MONGO_DB_NAME]
-
-    # Unique index on username — enforced at the database level
-    # so duplicate registrations are rejected even under concurrent load
-    await _db["users"].create_index("username", unique=True)
-    logger.info("MongoDB connected. Database: %s", MONGO_DB_NAME)
+def get_database():
+    return client[MONGO_DB]
 
 
-async def close_db() -> None:
-    """Close the MongoDB connection. Called during FastAPI shutdown."""
-    global _client
-    if _client:
-        _client.close()
+def get_users_collection():
+    """Shortcut used by route handlers."""
+    return get_database()["users"]
+
+
+# Legacy alias so any code using get_db() still works
+def get_db():
+    return get_database()
+
+
+async def connect_db():
+    global client
+    client = AsyncIOMotorClient(MONGO_URI)
+    await client.admin.command("ping")
+    logger.info("MongoDB connected. Database: %s", MONGO_DB)
+
+    users = get_users_collection()
+    await users.create_indexes([
+        IndexModel([("username", ASCENDING)], unique=True)
+    ])
+    logger.info("Indexes ensured.")
+
+
+async def close_db():
+    global client
+    if client:
+        client.close()
         logger.info("MongoDB connection closed.")
-
-
-def get_db() -> AsyncIOMotorDatabase:
-    """
-    Return the active database instance.
-    Raises RuntimeError if called before connect_db().
-    """
-    if _db is None:
-        raise RuntimeError("Database not initialized. Call connect_db() first.")
-    return _db

@@ -1,9 +1,5 @@
 """
-schemas/auth.py — Authentication request/response models.
-
-commitment_r and response_s are accepted as int or str for the same
-reason as public_key_y — the JS frontend sends large BigInts as
-decimal strings to avoid JSON integer precision loss above 2^53.
+schemas/auth.py — Pydantic request/response models for authentication endpoints.
 """
 
 from pydantic import BaseModel, Field, field_validator
@@ -18,7 +14,6 @@ class CommitRequest(BaseModel):
     @field_validator("commitment_r", mode="before")
     @classmethod
     def coerce_commitment(cls, v) -> int:
-        """Accept decimal string or int."""
         try:
             return int(v)
         except (ValueError, TypeError):
@@ -27,7 +22,7 @@ class CommitRequest(BaseModel):
 
 class CommitResponse(BaseModel):
     session_id: str = Field(..., description="Unique challenge session identifier")
-    challenge_e: str = Field(..., description="Random challenge e ∈ (1, Q)")  # FIX: Change 'int' to 'str'
+    challenge_e: str = Field(..., description="Random challenge e ∈ (1, Q)")
 
 
 # ── POST /api/auth/verify ─────────────────────────────────────
@@ -39,7 +34,6 @@ class VerifyRequest(BaseModel):
     @field_validator("response_s", mode="before")
     @classmethod
     def coerce_response(cls, v) -> int:
-        """Accept decimal string or int."""
         try:
             return int(v)
         except (ValueError, TypeError):
