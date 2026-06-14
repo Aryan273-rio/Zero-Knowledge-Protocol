@@ -11,14 +11,20 @@ export function AuthJourney({ setPhase, setMathValues, setIsSuccess, addLog }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!username.trim()) return;
+    const user = username.trim();
+    if (!user) return;
+    if (!/^[a-zA-Z0-9_\-]{3,50}$/.test(user)) {
+      addLog({ type: "ERROR", message: "Username must be 3-50 chars (alphanumeric, _, -)." });
+      setPhase("error");
+      return;
+    }
     setIsLoading(true);
     setPhase("registering");
     setMathValues({});
     setIsSuccess(false);
 
     try {
-      addLog({ type: "INFO", message: `Initiating registration for user: ${username}` });
+      addLog({ type: "INFO", message: `Initiating registration for user: ${user}` });
       
       const kp = generateKeypair();
       setMathValues({ x: kp.x, y: kp.y });
@@ -27,7 +33,7 @@ export function AuthJourney({ setPhase, setMathValues, setIsSuccess, addLog }) {
       await new Promise(res => setTimeout(res, 800)); // Visual delay
       
       addLog({ type: "SENT", message: `Transmitting Public Key (y) to server...` });
-      await apiRegister(username.trim(), kp.y.toString());
+      await apiRegister(user, kp.y.toString());
       
       addLog({ type: "SUCCESS", message: `Registration complete. Secret Key securely saved.` });
       setSecretKey(kp.x.toString());
@@ -44,6 +50,11 @@ export function AuthJourney({ setPhase, setMathValues, setIsSuccess, addLog }) {
   const handleLogin = async () => {
     const user = username.trim();
     if (!user || !secretKey.trim()) return;
+    if (!/^[a-zA-Z0-9_\-]{3,50}$/.test(user)) {
+      addLog({ type: "ERROR", message: "Username must be 3-50 chars (alphanumeric, _, -)." });
+      setPhase("error");
+      return;
+    }
     
     setIsLoading(true);
     setIsSuccess(false);
@@ -91,7 +102,7 @@ export function AuthJourney({ setPhase, setMathValues, setIsSuccess, addLog }) {
       setPhase("verifying");
       addLog({ type: "SENT", message: `Transmitting response (s) for verification` });
       
-      await apiLoginVerify(user, s, sessionId);
+      const res = await apiLoginVerify(user, s, sessionId);
       
       addLog({ type: "VERIFY", message: `Server validated proof: g^s ≡ r · y^e mod p` });
       await new Promise(res => setTimeout(res, 500));
@@ -99,6 +110,15 @@ export function AuthJourney({ setPhase, setMathValues, setIsSuccess, addLog }) {
       setPhase("verified");
       setIsSuccess(true);
       addLog({ type: "SUCCESS", message: `Zero-Knowledge Authentication successful!` });
+      
+      // Give the visualizer 2 seconds to show the final state, then show dashboard
+      setTimeout(() => {
+        if (res.token) {
+          // Pass it up to App.jsx to render ProtectedDashboard
+          // Uses window event or prop callback
+          window.dispatchEvent(new CustomEvent("loginSuccess", { detail: res.token }));
+        }
+      }, 2000);
       
     } catch (err) {
       addLog({ type: "ERROR", message: err.message });

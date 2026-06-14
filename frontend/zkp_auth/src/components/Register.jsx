@@ -11,9 +11,15 @@ export function Register({ onRegistered }) {
   const [mathValues, setMathValues] = useState({});
 
   async function handleRegister() {
-    if (!username.trim()) {
+    const user = username.trim();
+    if (!user) {
       setStatus("error");
       setMessage("Please enter a username.");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_\-]{3,50}$/.test(user)) {
+      setStatus("error");
+      setMessage("Username must be 3-50 chars (alphanumeric, _, -).");
       return;
     }
 

@@ -94,19 +94,22 @@ export function modPow(base, exp, mod) {
  * @returns {BigInt} random BigInt in [1, max-1]
  */
 export function randomBigInt(max) {
-  // 32 bytes = 256 bits of entropy
-  const bytes = new Uint8Array(32);
-  window.crypto.getRandomValues(bytes);
-
-  // Reconstruct a BigInt from the byte array (big-endian)
-  // bytes[0] is the most significant byte
-  let value = 0n;
-  for (const byte of bytes) {
-    value = (value << 8n) | BigInt(byte);
+  const bytes = new Uint8Array(128);
+  const maxLimit = max - 1n;
+  
+  while (true) {
+    window.crypto.getRandomValues(bytes);
+    
+    let value = 0n;
+    for (const byte of bytes) {
+      value = (value << 8n) | BigInt(byte);
+    }
+    
+    // Strict rejection sampling: ensure perfect uniformity without modulo bias
+    if (value > 0n && value <= maxLimit) {
+      return value;
+    }
   }
-
-  // Reduce mod (max-1) then add 1 to get [1, max-1]
-  return (value % (max - 1n)) + 1n;
 }
 
 // ── Registration ─────────────────────────────────────────────

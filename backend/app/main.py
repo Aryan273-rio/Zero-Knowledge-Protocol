@@ -63,13 +63,20 @@ app = FastAPI(
 # Permissive for local development — allows Wireshark packet inspection
 # on plain HTTP. Restrict origins in production.
 
+from fastapi.responses import JSONResponse
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error("Unhandled server exception: %s", exc, exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 

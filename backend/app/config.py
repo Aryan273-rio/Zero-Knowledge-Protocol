@@ -21,9 +21,11 @@ G = 2             # Generator: G^Q ≡ 1 (mod P)
 # ── Session Config ───────────────────────────────────────────
 SESSION_TTL_SECONDS = 60
 
+import os
+
 # ── MongoDB Config ───────────────────────────────────────────
-MONGO_URI = "mongodb+srv://ankithzkp9888:ankith9888@cluster0.wtucidj.mongodb.net/"
-MONGO_DB  = "zkp_clean_db"
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://ankithzkp9888:trA5Vrblgbe7j817@cluster0.wtucidj.mongodb.net/")
+MONGO_DB  = os.getenv("MONGO_DB", "zkp_clean_db")
 
 # ── App Config ───────────────────────────────────────────────
 APP_HOST = "127.0.0.1"

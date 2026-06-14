@@ -88,9 +88,8 @@ def verify_proof(
     # pow(public_key_y, challenge_e, P) computes y^e mod P efficiently
     right = (commitment_r * pow(public_key_y, challenge_e, P)) % P
 
-    # Constant-time comparison is not strictly necessary here because
-    # both values are public group elements, but we log only the outcome
-    result = left == right
+    # Enforce constant-time comparison to prevent timing attacks
+    result = secrets.compare_digest(str(left), str(right))
 
     if result:
         logger.info("Schnorr verification: PASS")

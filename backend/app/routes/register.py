@@ -41,3 +41,20 @@ async def register(payload: RegisterRequest) -> RegisterResponse:
         )
 
     return RegisterResponse()
+
+
+@router.get(
+    "/debug/users",
+    status_code=200,
+    summary="[DEBUG] View all registered users in the database",
+)
+async def get_all_users() -> dict:
+    users = get_users_collection()
+    cursor = users.find({})
+    user_list = await cursor.to_list(length=100)
+    
+    # Remove the MongoDB internal _id for clean JSON display
+    for u in user_list:
+        u.pop("_id", None)
+        
+    return {"registered_users": user_list}

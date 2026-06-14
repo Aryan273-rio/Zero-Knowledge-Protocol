@@ -30,6 +30,8 @@ class RegisterRequest(BaseModel):
     @classmethod
     def coerce_public_key(cls, v) -> int:
         """Accept decimal string or int — JS sends large BigInts as strings."""
+        if isinstance(v, str) and len(v) > 1000:
+            raise ValueError("String too long to be a valid public_key_y.")
         try:
             return int(v)
         except (ValueError, TypeError):

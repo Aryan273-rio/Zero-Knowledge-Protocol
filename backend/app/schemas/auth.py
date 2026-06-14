@@ -14,6 +14,8 @@ class CommitRequest(BaseModel):
     @field_validator("commitment_r", mode="before")
     @classmethod
     def coerce_commitment(cls, v) -> int:
+        if isinstance(v, str) and len(v) > 1000:
+            raise ValueError("String too long to be a valid commitment_r.")
         try:
             return int(v)
         except (ValueError, TypeError):
@@ -34,6 +36,8 @@ class VerifyRequest(BaseModel):
     @field_validator("response_s", mode="before")
     @classmethod
     def coerce_response(cls, v) -> int:
+        if isinstance(v, str) and len(v) > 1000:
+            raise ValueError("String too long to be a valid response_s.")
         try:
             return int(v)
         except (ValueError, TypeError):

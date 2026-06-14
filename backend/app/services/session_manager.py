@@ -48,6 +48,7 @@ class ChallengeSession:
 
 # In-memory store: session_id → ChallengeSession
 _sessions: dict[str, ChallengeSession] = {}
+MAX_SESSIONS = 10000
 
 
 def create_session(username: str, commitment_r: int, challenge_e: int) -> str:
@@ -59,6 +60,13 @@ def create_session(username: str, commitment_r: int, challenge_e: int) -> str:
 
     128 bits makes brute-forcing session IDs computationally infeasible.
     """
+    # DoS Protection: hard limit on concurrent sessions
+    if len(_sessions) >= MAX_SESSIONS:
+        # Evict the oldest session (Python 3.7+ dicts preserve insertion order)
+        oldest_key = next(iter(_sessions))
+        _sessions.pop(oldest_key, None)
+        logger.warning("Session capacity reached. Evicted oldest session.")
+
     session_id = secrets.token_hex(16)
     _sessions[session_id] = ChallengeSession(
         session_id=session_id,

@@ -42,6 +42,10 @@ export function Login({ prefillUsername, prefillX }) {
       reset("Please enter a username.", true);
       return;
     }
+    if (!/^[a-zA-Z0-9_\-]{3,50}$/.test(user)) {
+      reset("Username must be 3-50 chars (alphanumeric, _, -).", true);
+      return;
+    }
 
     let x;
     try {

@@ -1,16 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BackgroundEffects } from "./components/BackgroundEffects.jsx";
 import { HeroSection } from "./components/HeroSection.jsx";
 import { ProtocolVisualizer } from "./components/ProtocolVisualizer.jsx";
 import { ProofTerminal } from "./components/ProofTerminal.jsx";
 import { MathExplorer } from "./components/MathExplorer.jsx";
 import { AuthJourney } from "./components/AuthJourney.jsx";
+import { ProtectedDashboard } from "./components/ProtectedDashboard.jsx";
 
 export default function App() {
   const [phase, setPhase] = useState("idle");
   const [mathValues, setMathValues] = useState({});
   const [isSuccess, setIsSuccess] = useState(false);
   const [logs, setLogs] = useState([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("zkp_auth_token"));
+
+  useEffect(() => {
+    const handleLogin = (e) => {
+      localStorage.setItem("zkp_auth_token", e.detail);
+      setIsAuthenticated(true);
+    };
+    window.addEventListener("loginSuccess", handleLogin);
+    return () => window.removeEventListener("loginSuccess", handleLogin);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("zkp_auth_token");
+    setIsAuthenticated(false);
+    setPhase("idle");
+    setIsSuccess(false);
+    setLogs([]);
+    setMathValues({});
+  };
 
   const addLog = (log) => {
     setLogs((prev) => [...prev, { ...log, timestamp: Date.now() }]);
@@ -27,12 +47,16 @@ export default function App() {
           
           {/* Left Column - Interactions & Terminal */}
           <div className="lg:col-span-5 space-y-8">
-            <AuthJourney 
-              setPhase={setPhase} 
-              setMathValues={setMathValues} 
-              setIsSuccess={setIsSuccess}
-              addLog={addLog}
-            />
+            {isAuthenticated ? (
+              <ProtectedDashboard onLogout={handleLogout} />
+            ) : (
+              <AuthJourney 
+                setPhase={setPhase} 
+                setMathValues={setMathValues} 
+                setIsSuccess={setIsSuccess}
+                addLog={addLog}
+              />
+            )}
             
             <ProofTerminal logs={logs} />
           </div>

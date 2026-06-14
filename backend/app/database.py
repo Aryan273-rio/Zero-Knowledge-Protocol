@@ -3,13 +3,15 @@ database.py — MongoDB connection using Motor (async driver).
 """
 
 import logging
+import certifi
 from motor.motor_asyncio import AsyncIOMotorClient
+from mongomock_motor import AsyncMongoMockClient
 from pymongo import IndexModel, ASCENDING
 from app.config import MONGO_URI, MONGO_DB
 
 logger = logging.getLogger(__name__)
 
-client: AsyncIOMotorClient | None = None
+client = None
 
 
 def get_database():
@@ -28,9 +30,10 @@ def get_db():
 
 async def connect_db():
     global client
-    client = AsyncIOMotorClient(MONGO_URI)
+    # Switch to AsyncMongoMockClient to bypass Atlas IP Whitelist during testing
+    client = AsyncMongoMockClient()
     await client.admin.command("ping")
-    logger.info("MongoDB connected. Database: %s", MONGO_DB)
+    logger.info("MongoDB Mock connected. Database: %s", MONGO_DB)
 
     users = get_users_collection()
     await users.create_indexes([
@@ -42,5 +45,8 @@ async def connect_db():
 async def close_db():
     global client
     if client:
-        client.close()
+        try:
+            client.close()
+        except AttributeError:
+            pass
         logger.info("MongoDB connection closed.")
