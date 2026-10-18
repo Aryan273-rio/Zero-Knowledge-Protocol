@@ -4,7 +4,7 @@ import { generateCommitment, computeResponse, modPow, p, g } from "../utils/schn
 import {
   apiLoginCommit,
   apiLoginVerify,
-} from "../utils/mockApi.js";
+} from "../utils/mockapi.js";
 import { MathPanel } from "./MathPanel.jsx";
 
 const PHASES = {

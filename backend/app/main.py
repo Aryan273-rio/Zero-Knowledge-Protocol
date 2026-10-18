@@ -12,6 +12,7 @@ Wires together:
 import asyncio
 import logging
 import logging.config
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,6 +49,20 @@ logger = logging.getLogger(__name__)
 
 # ── Application factory ────────────────────────────────────────────────────────
 
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """FastAPI lifespan handler — replaces deprecated on_event."""
+    logger.info("Starting ZKP Auth server...")
+    await connect_db()
+    cleanup_task = asyncio.create_task(_session_cleanup_loop())
+    logger.info("Server ready.")
+    yield
+    # Shutdown
+    logger.info("Shutting down ZKP Auth server...")
+    cleanup_task.cancel()
+    await close_db()
+
+
 app = FastAPI(
     title=APP_TITLE,
     version=APP_VERSION,
@@ -57,6 +72,7 @@ app = FastAPI(
     ),
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
@@ -83,23 +99,6 @@ async def global_exception_handler(request, exc):
 app.include_router(register.router, prefix="/api", tags=["Registration"])
 app.include_router(auth.router, prefix="/api", tags=["Authentication"])
 
-
-# ── Lifecycle ──────────────────────────────────────────────────────────────────
-
-@app.on_event("startup")
-async def startup() -> None:
-    """Connect to MongoDB and start the session cleanup task."""
-    logger.info("Starting ZKP Auth server...")
-    await connect_db()
-    asyncio.create_task(_session_cleanup_loop())
-    logger.info("Server ready.")
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    """Gracefully close the MongoDB connection."""
-    logger.info("Shutting down ZKP Auth server...")
-    await close_db()
 
 
 async def _session_cleanup_loop() -> None:

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { generateKeypair } from "../utils/schnorr.js";
-import { apiRegister } from "../utils/mockApi.js";
+import { apiRegister } from "../utils/mockapi.js";
 import { MathPanel } from "./MathPanel.jsx";
 
 export function Register({ onRegistered }) {
